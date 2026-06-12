@@ -320,6 +320,16 @@ input[type=range].collective-slider::-webkit-slider-thumb{background:#27500A;}
       <span class="slider-val" id="vT5">20</span>
     </div>
     <div class="slider-row">
+      <span class="slider-lbl">&#8627; T3 add-on seats (4th)</span>
+      <input type="range" min="0" max="50" step="1" value="0" id="sT3add" oninput="calc()">
+      <span class="slider-val" id="vT3add">0</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-lbl">&#8627; T5 add-on seats (6th&#8211;7th)</span>
+      <input type="range" min="0" max="100" step="1" value="0" id="sT5add" oninput="calc()">
+      <span class="slider-val" id="vT5add">0</span>
+    </div>
+    <div class="slider-row">
       <span class="slider-lbl" style="color:#27500A;">Collective guest tickets</span>
       <input type="range" min="0" max="150" step="5" value="0" id="sCG" oninput="calc()">
       <span class="slider-val" id="vCG" style="color:#27500A;">0</span>
@@ -423,6 +433,8 @@ function switchTab(id) {
 
 // PRICING MODEL
 const CAP = 400;
+const T3_ADDON_PRICE = 3495; // 4th seat add-on to Team of 3
+const T5_ADDON_PRICE = 1995; // 6th or 7th seat add-on to Team of 5
 function parsePrice(id) {
   const raw = document.getElementById(id).value.replace(/,/g,'').replace(/[^0-9]/g,'');
   return Math.max(0, parseInt(raw) || 0);
@@ -507,6 +519,8 @@ function loadScenario(id) {
   document.getElementById('sT3').value = s.t3;
   document.getElementById('sT5').value = s.t5;
   document.getElementById('sCG').value = s.cg==='auto' ? coll : (s.cg||0);
+  document.getElementById('sT3add').value = s.t3add||0;
+  document.getElementById('sT5add').value = s.t5add||0;
   document.querySelectorAll('.scenario-card').forEach(c=>c.classList.remove('active'));
   const el = document.getElementById('sc-'+id);
   if (el) el.classList.add('active');
@@ -521,17 +535,24 @@ function calc(rerender) {
   const t3 = parseInt(document.getElementById('sT3').value);
   const t5 = parseInt(document.getElementById('sT5').value);
   const cg = parseInt(document.getElementById('sCG').value)||0;
+  const t3add = parseInt(document.getElementById('sT3add').value)||0;
+  const t5add = parseInt(document.getElementById('sT5add').value)||0;
   document.getElementById('vPartner').textContent = part;
   document.getElementById('vCollective').textContent = coll;
   document.getElementById('vInd').textContent = ind.toLocaleString();
   document.getElementById('vT3').textContent = t3.toLocaleString();
   document.getElementById('vT5').textContent = t5.toLocaleString();
   document.getElementById('vCG').textContent = cg.toLocaleString();
+  document.getElementById('vT3add').textContent = t3add.toLocaleString();
+  document.getElementById('vT5add').textContent = t5add.toLocaleString();
   document.getElementById('mPartner').textContent = part.toLocaleString();
   document.getElementById('mCollective').textContent = coll.toLocaleString();
   document.getElementById('mSellable').textContent = sell.toLocaleString();
   document.getElementById('mOppCost').textContent = fmt(part*getPrices().ind);
-  const sc = seats(ind, t3, t5, cg), r = rev(ind, t3, t5, cg);
+  const scBase = seats(ind, t3, t5, cg);
+  const rBase = rev(ind, t3, t5, cg);
+  const addonRev = t3add * T3_ADDON_PRICE + t5add * T5_ADDON_PRICE;
+  const sc = scBase + t3add + t5add, r = rBase + addonRev;
   const sellPct = sell>0 ? Math.min(100,Math.round(sc/sell*100)) : 0;
   const totPct = Math.min(100,Math.round((sc+part)/CAP*100));
   const partPct = (part/CAP*100).toFixed(2);
@@ -545,7 +566,9 @@ function calc(rerender) {
   document.getElementById('breakdownRows').innerHTML = `
     <div class="bd-row"><span class="bd-lbl">Individual (${ind.toLocaleString()} tickets @ $${P.ind.toLocaleString()})</span><span class="bd-val">${fmt(ind*P.ind)}</span></div>
     <div class="bd-row"><span class="bd-lbl">Teams of 3 (${t3} teams &middot; ${(t3*3).toLocaleString()} seats @ $${P.t3.toLocaleString()})</span><span class="bd-val">${fmt(t3*P.t3)}</span></div>
+    ${t3add > 0 ? `<div class="bd-row" style="padding-left:1.25rem;border-left:2px solid #e0e8f5;margin-left:4px;"><span class="bd-lbl" style="color:var(--text-muted);">&#8627; 4th seat add-ons (${t3add} ${t3add===1?'seat':'seats'} @ $${T3_ADDON_PRICE.toLocaleString()})</span><span class="bd-val" style="color:var(--text-secondary);">${fmt(t3add*T3_ADDON_PRICE)}</span></div>` : ''}
     <div class="bd-row"><span class="bd-lbl">Teams of 5 (${t5} teams &middot; ${(t5*5).toLocaleString()} seats @ $${P.t5.toLocaleString()})</span><span class="bd-val">${fmt(t5*P.t5)}</span></div>
+    ${t5add > 0 ? `<div class="bd-row" style="padding-left:1.25rem;border-left:2px solid #e0e8f5;margin-left:4px;"><span class="bd-lbl" style="color:var(--text-muted);">&#8627; 6th–7th seat add-ons (${t5add} ${t5add===1?'seat':'seats'} @ $${T5_ADDON_PRICE.toLocaleString()})</span><span class="bd-val" style="color:var(--text-secondary);">${fmt(t5add*T5_ADDON_PRICE)}</span></div>` : ''}
     <div class="bd-row"><span class="bd-lbl">Collective Guest tickets (${cg.toLocaleString()} @ $${P.cg.toLocaleString()})</span><span class="bd-val">${fmt(cg*P.cg)}</span></div>
     <div class="bd-row"><span class="bd-lbl">Collective member seats (${coll} free)</span><span class="bd-val" style="color:#27500A;">$0</span></div>
     <div class="bd-row"><span class="bd-lbl">Partner seats (${part} comp)</span><span class="bd-val" style="color:#999;">$0</span></div>
@@ -657,7 +680,9 @@ function getPnlTicketRev() {
   const t3 = parseInt(document.getElementById('sT3').value)||0;
   const t5 = parseInt(document.getElementById('sT5').value)||0;
   const cg = parseInt(document.getElementById('sCG').value)||0;
-  return rev(ind, t3, t5, cg);
+  const t3add = parseInt(document.getElementById('sT3add').value)||0;
+  const t5add = parseInt(document.getElementById('sT5add').value)||0;
+  return rev(ind, t3, t5, cg) + t3add * T3_ADDON_PRICE + t5add * T5_ADDON_PRICE;
 }
 
 function calcPnl() {
